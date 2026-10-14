@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - Distributed Status Tracker{% endblock %}
+
+{% block content %}
+<div class="placeholder-container">
+    <div class="placeholder-card">
+        <div class="placeholder-badge">Module Overview</div>
+        <h1 class="placeholder-title">{{ phase_title or 'System Module' }}</h1>
+        <p class="placeholder-desc">{{ phase_description or 'This monitoring module is active and operating according to system configuration.' }}</p>
+        
+        <div class="placeholder-illustration">
+            <div class="pulse-ring"></div>
+            <div class="pulse-core">⚙️</div>
+        </div>
+
+        <div class="placeholder-meta">
+            <span class="meta-label">Module Status:</span>
+            <span class="meta-value">Active & Operational</span>
+        </div>
+
+        <div class="placeholder-actions">
+            <a href="{{ url_for('dashboard') }}" class="btn-primary">&larr; Return to Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

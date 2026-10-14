@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Distributed Status Tracker{% endblock %}
+
+{% block content %}
+<div class="auth-card-wrapper">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h1 class="auth-title">Create Account</h1>
+            <p class="auth-subtitle">Get started with distributed uptime monitoring</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('register') }}" class="auth-form" id="registerForm" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+            <div class="form-group">
+                <label for="username" class="form-label">Username</label>
+                <div class="input-container">
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        class="form-input" 
+                        placeholder="e.g. cloud_admin" 
+                        value="{{ username or '' }}"
+                        required 
+                        autocomplete="username"
+                        minlength="3"
+                        maxlength="30"
+                    >
+                </div>
+                <span class="form-hint">3–30 characters (letters, numbers, hyphens, and underscores)</span>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
+                <div class="input-container">
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        class="form-input" 
+                        placeholder="you@domain.com" 
+                        value="{{ email or '' }}"
+                        required 
+                        autocomplete="email"
+                    >
+                </div>
+                <span class="form-hint">Used for login and incident alerts</span>
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-container password-input-wrapper">
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="form-input" 
+                        placeholder="••••••••" 
+                        required 
+                        autocomplete="new-password"
+                        minlength="8"
+                    >
+                    <button type="button" class="password-toggle-btn" data-target="password" aria-label="Toggle password visibility">
+                        <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <svg class="eye-off-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                    </button>
+                </div>
+                <span class="form-hint">Minimum 8 characters</span>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password" class="form-label">Confirm Password</label>
+                <div class="input-container password-input-wrapper">
+                    <input 
+                        type="password" 
+                        id="confirm_password" 
+                        name="confirm_password" 
+                        class="form-input" 
+                        placeholder="••••••••" 
+                        required 
+                        autocomplete="new-password"
+                    >
+                    <button type="button" class="password-toggle-btn" data-target="confirm_password" aria-label="Toggle password visibility">
+                        <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <svg class="eye-off-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary w-full" id="submitRegisterBtn">
+                Register Account
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Already have an account? <a href="{{ url_for('login') }}" class="link-accent">Sign in here</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

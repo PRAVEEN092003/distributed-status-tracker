@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Incident #{{ incident.id }} ({{ incident.failure_category or incident.incident_type }}) - Distributed Status Tracker{% endblock %}
+
+{% block content %}
+<div class="incident-detail-wrapper">
+    <!-- Breadcrumb & Top Bar -->
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb mb-1">
+                <a href="{{ url_for('incidents') }}" class="link-subtle">&larr; Back to Incidents</a>
+            </div>
+            <div class="flex-align-center gap-2">
+                <h1 class="page-title mb-0">
+                    Incident #{{ incident.id }}: <span class="text-danger">{{ incident.failure_category or incident.incident_type }}</span>
+                </h1>
+                {% if incident.status == 'OPEN' %}
+                    <span class="badge-status badge-down">
+                        <span class="pulse-dot"></span> OPEN OUTAGE
+                    </span>
+                {% else %}
+                    <span class="badge-status badge-up">RESOLVED</span>
+                {% endif %}
+            </div>
+            <p class="page-subtitle mt-1">
+                Target Endpoint: 
+                <a href="{{ url_for('website_detail', service_id=incident.service_id) }}" class="table-link">
+                    <strong>{{ incident.service_name }}</strong>
+                </a>
+                <span class="text-muted">({{ incident.service_url }})</span>
+            </p>
+        </div>
+
+        <div class="header-actions">
+            <form method="POST" action="{{ url_for('check_website_now', service_id=incident.service_id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn-primary" title="Trigger diagnostic probe">⚡ Run Diagnostic Check</button>
+            </form>
+            <a href="{{ url_for('website_detail', service_id=incident.service_id) }}" class="btn-outline">
+                Website Overview
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Status Cards -->
+    <section class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-data">
+                <span class="metric-label">Incident Lifecycle</span>
+                <div class="metric-value text-xl">
+                    {{ incident.status }}
+                </div>
+                <span class="metric-note">Started: {{ incident.started_at }}</span>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-data">
+                <span class="metric-label">Downtime Duration</span>
+                <span class="metric-value">
+                    {% if incident.duration_seconds is not none %}
+                        {{ incident.duration_seconds }}<span class="text-sm font-normal">s</span>
+                    {% elif incident.status == 'OPEN' %}
+                        <span class="text-danger text-base font-semibold">Ongoing Outage</span>
+                    {% else %}
+                        -
+                    {% endif %}
+                </span>
+                <span class="metric-note">
+                    {% if incident.resolved_at %}
+                        Recovered at: {{ incident.resolved_at }}
+                    {% else %}
+                        Awaiting confirmed recovery probe
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-data">
+                <span class="metric-label">Diagnostic Confidence</span>
+                <div class="metric-value text-xl">
+                    {% if incident.confidence %}
+                        <span class="badge-confidence badge-confidence-{{ incident.confidence.lower() }}">
+                            {{ incident.confidence }} Confidence
+                        </span>
+                    {% else %}
+                        <span>Standard</span>
+                    {% endif %}
+                </div>
+                <span class="metric-note">Diagnostic evaluation confidence</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Root Cause Analysis & Evidence Panel -->
+    <section class="dashboard-sections-grid">
+        <!-- Root Cause Analysis Diagnostics -->
+        <div class="dashboard-panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Root Cause Diagnosis</h2>
+                    <span class="text-xs text-muted">Diagnostic analysis and troubleshooting guidance</span>
+                </div>
+                <span class="badge-category">{{ incident.failure_category or incident.incident_type }}</span>
+            </div>
+            <div class="panel-body rca-body">
+                <div class="rca-section">
+                    <span class="rca-label">Probable Cause:</span>
+                    <p class="rca-value">
+                        {{ incident.possible_cause or incident.description or "Root cause undetermined based on currently available telemetry." }}
+                    </p>
+                </div>
+
+                <div class="rca-section">
+                    <span class="rca-label">Diagnostic Telemetry Evidence:</span>
+                    <div class="evidence-box">
+                        <code>{{ incident.evidence or incident.description or "Connection attempt failed." }}</code>
+                    </div>
+                </div>
+
+                <div class="rca-section">
+                    <span class="rca-label">Recommended Troubleshooting Steps:</span>
+                    {% if incident.recommended_steps %}
+                        <div class="steps-box">
+                            <pre class="steps-text">{{ incident.recommended_steps }}</pre>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-sm">No specific troubleshooting steps recorded for this incident type.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Associated Monitoring Check Results -->
+        <div class="dashboard-panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Associated Check History</h2>
+                    <span class="text-xs text-muted">Checks recorded during incident lifecycle</span>
+                </div>
+                <a href="{{ url_for('history', service_id=incident.service_id) }}" class="link-subtle">Full Service Logs &rarr;</a>
+            </div>
+            <div class="panel-body">
+                {% if related_results %}
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Status</th>
+                                    <th>Latency</th>
+                                    <th>Code</th>
+                                    <th>Error / Diagnostic</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for res in related_results %}
+                                    <tr>
+                                        <td class="text-sm text-muted">{{ res.checked_at }}</td>
+                                        <td>
+                                            <span class="badge-status badge-{{ res.status.lower() }}">{{ res.status }}</span>
+                                        </td>
+                                        <td>
+                                            {% if res.response_time is not none %}
+                                                {{ res.response_time }}ms
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if res.http_status_code %}
+                                                <code>{{ res.http_status_code }}</code>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="text-danger text-sm">
+                                                {{ res.error_message or res.failure_category or '-' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="table-empty">
+                        No associated checks logged yet during this outage period.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

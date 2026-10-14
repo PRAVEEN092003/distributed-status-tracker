@@ -1,0 +1,471 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Distributed Status Tracker{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+    <!-- Welcome Header Banner with Quick Actions -->
+    <section class="dashboard-header">
+        <div class="welcome-meta">
+            <h1 class="welcome-title">Welcome back, <span class="highlight-username">{{ username }}</span>!</h1>
+            <p class="welcome-subtitle">Overview of endpoint availability, response latency, and operational health.</p>
+        </div>
+        <div class="header-actions-wrap">
+            <div class="quick-status-pill">
+                <span class="status-indicator-dot" id="livePollingDot"></span>
+                <span id="livePollingText">Live Monitoring (Auto-sync 6s)</span>
+            </div>
+            <div class="quick-nav-links">
+                <a href="{{ url_for('websites') }}" class="btn-xs btn-outline">Websites ({{ stats.total_services }})</a>
+                <a href="{{ url_for('incidents') }}" class="btn-xs btn-outline">Incidents ({{ stats.active_incidents }})</a>
+                <a href="{{ url_for('history') }}" class="btn-xs btn-outline">Monitoring History</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Active Incidents Banner -->
+    {% if active_incidents %}
+        <div class="alert-incident-banner" id="activeIncidentsBanner">
+            <div class="alert-incident-icon">🚨</div>
+            <div class="alert-incident-content">
+                <strong>Attention: {{ active_incidents|length }} Active Incident(s) Detected</strong>
+                <p>One or more target endpoints are currently experiencing confirmed failure or unreachable status.</p>
+                <div class="alert-incident-list">
+                    {% for ai in active_incidents %}
+                        <div class="alert-incident-item">
+                            <span><strong>{{ ai.service_name }}</strong>: <span class="badge-category">{{ ai.failure_category or ai.incident_type or 'Outage' }}</span></span>
+                            <a href="{{ url_for('incident_detail', incident_id=ai.id) }}" class="btn-xs btn-outline">View Diagnostics &rarr;</a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <a href="{{ url_for('incidents', status='OPEN') }}" class="btn-primary btn-sm">
+                View All Incidents &rarr;
+            </a>
+        </div>
+    {% endif %}
+
+    <!-- Metric Cards Grid -->
+    <section class="metrics-grid">
+        <div class="metric-card card-total">
+            <div class="metric-icon-wrap icon-total">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                    <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                    <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                    <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                </svg>
+            </div>
+            <div class="metric-data">
+                <span class="metric-label">Monitored Websites</span>
+                <span class="metric-value" id="totalServicesCount">{{ stats.total_services }}</span>
+                <span class="metric-note">Target endpoints registered</span>
+            </div>
+        </div>
+
+        <div class="metric-card card-up">
+            <div class="metric-icon-wrap icon-up">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+            </div>
+            <div class="metric-data">
+                <span class="metric-label">UP Services</span>
+                <span class="metric-value color-up" id="upServicesCount">{{ stats.up_services }}</span>
+                <span class="metric-note">Healthy & responding</span>
+            </div>
+        </div>
+
+        <div class="metric-card card-degraded">
+            <div class="metric-icon-wrap icon-degraded">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <div class="metric-data">
+                <span class="metric-label">DEGRADED Services</span>
+                <span class="metric-value color-degraded" id="degradedServicesCount">{{ stats.degraded_services }}</span>
+                <span class="metric-note">High latency or partial error</span>
+            </div>
+        </div>
+
+        <div class="metric-card card-down">
+            <div class="metric-icon-wrap icon-down">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+            </div>
+            <div class="metric-data">
+                <span class="metric-label">DOWN Services</span>
+                <span class="metric-value color-down" id="downServicesCount">{{ stats.down_services }}</span>
+                <span class="metric-note">Unreachable / timeout failure</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Latency Response-Time Chart -->
+    <section class="chart-panel">
+        <div class="chart-header">
+            <div>
+                <h2 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">Response-Time Latency Trends</h2>
+                <p class="text-xs text-muted">Response times (ms) from recent endpoint health checks</p>
+            </div>
+            <div class="flex-align-center gap-2">
+                <span class="badge-status badge-up" style="font-size: 0.75rem;">Live</span>
+                <a href="{{ url_for('history') }}" class="link-subtle text-xs">Full History &rarr;</a>
+            </div>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="latencyTrendChart"></canvas>
+        </div>
+    </section>
+
+    <!-- Main Dual Panels Grid -->
+    <section class="dashboard-sections-grid">
+        <!-- Latest Monitoring Results -->
+        <div class="dashboard-panel">
+            <div class="panel-header">
+                <h2>Latest Monitoring Results</h2>
+                <a href="{{ url_for('history') }}" class="link-subtle">View Full History &rarr;</a>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table class="data-table" id="latestResultsTable">
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th>Status</th>
+                                <th>Latency</th>
+                                <th>Code</th>
+                                <th>Checked At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="latestResultsBody">
+                            {% if latest_results %}
+                                {% for res in latest_results %}
+                                    <tr>
+                                        <td>
+                                            <a href="{{ url_for('website_detail', service_id=res.service_id) }}" class="table-link">
+                                                <strong>{{ res.service_name }}</strong>
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <span class="badge-status badge-{{ res.status.lower() }}">
+                                                {{ res.status }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if res.response_time is not none %}
+                                                {{ res.response_time }}ms
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if res.http_status_code %}
+                                                <code>{{ res.http_status_code }}</code>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-muted text-sm">
+                                            {{ res.checked_at }}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr id="noResultsRow">
+                                    <td colspan="5" class="table-empty">
+                                        No checks recorded yet. <a href="{{ url_for('websites') }}">Add a website</a> to begin monitoring.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Monitored Services List -->
+        <div class="dashboard-panel">
+            <div class="panel-header">
+                <h2>Monitored Websites</h2>
+                <a href="{{ url_for('websites') }}" class="link-subtle">Manage All &rarr;</a>
+            </div>
+            <div class="panel-body">
+                {% if services_list %}
+                    <div class="service-quick-list" id="servicesQuickList">
+                        {% for svc in services_list %}
+                            <div class="service-quick-item">
+                                <div class="service-quick-main">
+                                    <div class="service-quick-title">
+                                        <span class="badge-status badge-{{ svc.current_status.lower() }}">
+                                            {{ svc.current_status }}
+                                        </span>
+                                        <a href="{{ url_for('website_detail', service_id=svc.id) }}" class="table-link">
+                                            <strong>{{ svc.service_name }}</strong>
+                                        </a>
+                                    </div>
+                                    <span class="service-quick-url" title="{{ svc.service_url }}">{{ svc.service_url }}</span>
+                                </div>
+                                <div class="service-quick-meta">
+                                    <span class="badge-risk badge-risk-{{ (svc.risk_level or 'LOW')|lower }}" title="{{ svc.risk_explanation or '' }}">
+                                        {{ svc.risk_level or 'LOW' }} ({{ svc.risk_score or 0 }}/100)
+                                    </span>
+                                    <span class="text-sm text-muted">
+                                        {% if svc.last_checked_at %}
+                                            Checked {{ svc.last_checked_at }}
+                                        {% else %}
+                                            Pending
+                                        {% endif %}
+                                    </span>
+                                    <form method="POST" action="{{ url_for('check_website_now', service_id=svc.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        <button type="submit" class="btn-xs btn-outline">⚡ Check</button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state-box">
+                        <p class="panel-description">You haven't added any websites yet.</p>
+                        <a href="{{ url_for('websites') }}" class="btn-primary">Add Your First Website</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Downtime Risk & Stability Forecast Panel -->
+    {% if services_list %}
+        <section class="dashboard-panel mt-4">
+            <div class="panel-header">
+                <div>
+                    <h2>Downtime Risk & Stability Assessment</h2>
+                    <span class="text-xs text-muted">Stability indicators based on latency trends, error rates, and failure history</span>
+                </div>
+                <a href="{{ url_for('websites') }}" class="link-subtle">Website Settings &rarr;</a>
+            </div>
+            <div class="panel-body">
+                <div class="risk-forecast-grid">
+                    {% for svc in services_list %}
+                        <div class="risk-forecast-card risk-border-{{ (svc.risk_level or 'LOW')|lower }}">
+                            <div class="risk-forecast-header">
+                                <div class="flex-column">
+                                    <a href="{{ url_for('website_detail', service_id=svc.id) }}" class="table-link">
+                                        <strong>{{ svc.service_name }}</strong>
+                                    </a>
+                                    <span class="text-xs text-muted">{{ svc.service_url }}</span>
+                                </div>
+                                <span class="badge-risk badge-risk-{{ (svc.risk_level or 'LOW')|lower }}">
+                                    {{ svc.risk_level or 'LOW' }} RISK ({{ svc.risk_score or 0 }}/100)
+                                </span>
+                            </div>
+                            <div class="risk-forecast-content">
+                                <div class="risk-meta-row">
+                                    <span class="text-xs text-muted uppercase">Latency Trend:</span>
+                                    <span class="badge-trend trend-{{ (svc.latency_trend or 'STABLE')|lower }}">{{ svc.latency_trend or 'STABLE' }}</span>
+                                </div>
+                                <p class="risk-explanation-text">{{ svc.risk_explanation }}</p>
+                                {% if svc.contributing_factors %}
+                                    <div class="risk-factors-wrap">
+                                        <span class="text-xs text-muted uppercase">Contributing Factors:</span>
+                                        <ul class="risk-factors-list">
+                                            {% for factor in svc.contributing_factors[:2] %}
+                                                <li>{{ factor }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize Latency Trend Chart with Chart.js
+    let latencyChartInstance = null;
+    (function initChart() {
+        const canvas = document.getElementById('latencyTrendChart');
+        if (!canvas || typeof Chart === 'undefined') return;
+
+        // Extract initial data points from latest_results
+        const initialResults = [
+            {% if latest_results %}
+                {% for r in latest_results|reverse %}
+                    {
+                        service: "{{ r.service_name|replace('"', '\\"') }}",
+                        time: "{{ r.checked_at }}",
+                        latency: {{ r.response_time if r.response_time is not none else 'null' }},
+                        status: "{{ r.status }}"
+                    },
+                {% endfor %}
+            {% endif %}
+        ];
+
+        const labels = initialResults.length > 0 
+            ? initialResults.map(r => r.service + ' (' + (r.time ? r.time.split(' ')[1] || r.time : '') + ')')
+            : ['No checks recorded'];
+        const values = initialResults.length > 0 
+            ? initialResults.map(r => r.latency !== null ? r.latency : 0)
+            : [0];
+
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+        gradient.addColorStop(0, 'rgba(139, 92, 246, 0.45)');
+        gradient.addColorStop(1, 'rgba(139, 92, 246, 0.02)');
+
+        latencyChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Response Time (ms)',
+                    data: values,
+                    borderColor: '#8b5cf6',
+                    backgroundColor: gradient,
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#c4b5fd',
+                    pointBorderColor: '#7c3aed',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.35,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleColor: '#f8fafc',
+                        bodyColor: '#cbd5e1',
+                        borderColor: '#334155',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                return `Latency: ${context.parsed.y} ms`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(51, 65, 85, 0.35)',
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { family: "'Inter', sans-serif", size: 11 },
+                            maxRotation: 30
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(51, 65, 85, 0.35)',
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { family: "'Inter', sans-serif", size: 11 },
+                            callback: function(value) { return value + ' ms'; }
+                        }
+                    }
+                }
+            }
+        });
+    })();
+
+    // Live dashboard stats polling
+    (function initDashboardPolling() {
+        let isPolling = false;
+        async function fetchStats() {
+            if (isPolling) return;
+            isPolling = true;
+            try {
+                const res = await fetch("{{ url_for('api_dashboard_stats') }}", {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.status === 'success') {
+                    // Update metric cards
+                    const totalEl = document.getElementById('totalServicesCount');
+                    const upEl = document.getElementById('upServicesCount');
+                    const degradedEl = document.getElementById('degradedServicesCount');
+                    const downEl = document.getElementById('downServicesCount');
+                    
+                    if (totalEl) totalEl.textContent = data.stats.total_services;
+                    if (upEl) upEl.textContent = data.stats.up_services;
+                    if (degradedEl) degradedEl.textContent = data.stats.degraded_services;
+                    if (downEl) downEl.textContent = data.stats.down_services;
+
+                    // Update latest results table if rows returned
+                    if (data.latest_results && data.latest_results.length > 0) {
+                        const tbody = document.getElementById('latestResultsBody');
+                        if (tbody) {
+                            tbody.innerHTML = data.latest_results.map(r => `
+                                <tr>
+                                    <td>
+                                        <a href="/websites/${r.service_id}" class="table-link">
+                                            <strong>${escapeHtml(r.service_name)}</strong>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge-status badge-${r.status.toLowerCase()}">${r.status}</span>
+                                    </td>
+                                    <td>${r.response_time !== null ? r.response_time + 'ms' : '-'}</td>
+                                    <td>${r.http_status_code ? '<code>' + r.http_status_code + '</code>' : '-'}</td>
+                                    <td class="text-muted text-sm">${escapeHtml(r.checked_at)}</td>
+                                </tr>
+                            `).join('');
+                        }
+
+                        // Update latency chart
+                        if (latencyChartInstance) {
+                            const rev = [...data.latest_results].reverse();
+                            const newLabels = rev.map(r => r.service_name + ' (' + (r.checked_at ? r.checked_at.split(' ')[1] || r.checked_at : '') + ')');
+                            const newValues = rev.map(r => r.response_time !== null ? r.response_time : 0);
+                            latencyChartInstance.data.labels = newLabels;
+                            latencyChartInstance.data.datasets[0].data = newValues;
+                            latencyChartInstance.update();
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('Dashboard polling sync error:', err);
+            } finally {
+                isPolling = false;
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        setInterval(fetchStats, 6000);
+    })();
+</script>
+{% endblock %}

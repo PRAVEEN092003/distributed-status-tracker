@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Monitoring History - Distributed Status Tracker{% endblock %}
+
+{% block content %}
+<div class="history-page-wrapper">
+    <!-- Header with Filter -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Monitoring History</h1>
+            <p class="page-subtitle">Comprehensive check history, latency records, HTTP response codes, and diagnostic classifications.</p>
+        </div>
+        
+        <!-- Filter Form -->
+        <form method="GET" action="{{ url_for('history') }}" class="filter-form">
+            <select name="service_id" class="form-select" onchange="this.form.submit()" aria-label="Filter by service">
+                <option value="">All Monitored Websites</option>
+                {% for svc in user_services %}
+                    <option value="{{ svc.id }}" {% if current_filter == svc.id %}selected{% endif %}>
+                        {{ svc.service_name }}
+                    </option>
+                {% endfor %}
+            </select>
+            {% if current_filter %}
+                <a href="{{ url_for('history') }}" class="btn-outline btn-sm">Clear Filter</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- History Data Table -->
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Log Entries (Total {{ total_count }})</h2>
+                <span class="text-xs text-muted">Page {{ page }} of {{ total_pages }}</span>
+            </div>
+            {% if current_filter %}
+                <span class="badge-status badge-up">Filtered Service</span>
+            {% endif %}
+        </div>
+        <div class="panel-body">
+            {% if history_rows %}
+                <div class="table-responsive">
+                    <table class="data-table" id="historyTable">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Website Endpoint</th>
+                                <th>Status</th>
+                                <th>Response Time</th>
+                                <th>HTTP Code</th>
+                                <th>Classification</th>
+                                <th>Diagnostic / Cause</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in history_rows %}
+                                <tr>
+                                    <td class="text-sm text-muted">{{ row.checked_at }}</td>
+                                    <td>
+                                        <a href="{{ url_for('website_detail', service_id=row.service_id) }}" class="table-link">
+                                            <strong>{{ row.service_name }}</strong>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge-status badge-{{ row.status.lower() }}">
+                                            {{ row.status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if row.response_time is not none %}
+                                            <strong>{{ row.response_time }}ms</strong>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.http_status_code %}
+                                            <code>{{ row.http_status_code }}</code>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.failure_category %}
+                                            <span class="badge-category">{{ row.failure_category }}</span>
+                                            {% if row.confidence %}
+                                                <span class="badge-confidence badge-confidence-{{ row.confidence.lower() }} ml-1">
+                                                    {{ row.confidence }}
+                                                </span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-success text-xs font-medium">Normal / OK</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.possible_cause %}
+                                            <span class="text-sm">{{ row.possible_cause }}</span>
+                                        {% elif row.error_message %}
+                                            <span class="text-danger text-sm">{{ row.error_message }}</span>
+                                        {% else %}
+                                            <span class="text-success text-sm">Normal response confirmed</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Controls -->
+                {% if total_pages > 1 %}
+                    <div class="pagination-wrapper">
+                        {% if page > 1 %}
+                            <a href="{{ url_for('history', page=page-1, service_id=current_filter) }}" class="btn-outline btn-sm">&larr; Previous</a>
+                        {% else %}
+                            <span class="btn-outline btn-sm disabled">&larr; Previous</span>
+                        {% endif %}
+
+                        <span class="pagination-info">Page {{ page }} of {{ total_pages }}</span>
+
+                        {% if page < total_pages %}
+                            <a href="{{ url_for('history', page=page+1, service_id=current_filter) }}" class="btn-outline btn-sm">Next &rarr;</a>
+                        {% else %}
+                            <span class="btn-outline btn-sm disabled">Next &rarr;</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="empty-state-box">
+                    <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">📊</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">No Monitoring Records</h3>
+                    <p class="panel-description" style="max-width: 480px; margin: 0 auto 1.5rem auto;">
+                        {% if current_filter %}
+                            No check logs found matching the selected website filter.
+                        {% else %}
+                            No check logs have been recorded yet. Add an endpoint to begin collecting telemetry logs.
+                        {% endif %}
+                    </p>
+                    {% if current_filter %}
+                        <a href="{{ url_for('history') }}" class="btn-outline">Clear Active Filter</a>
+                    {% else %}
+                        <a href="{{ url_for('websites') }}" class="btn-primary">Add a Website to Monitor</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

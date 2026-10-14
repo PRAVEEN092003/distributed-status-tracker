@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Incidents & Diagnostics - Distributed Status Tracker{% endblock %}
+
+{% block content %}
+<div class="incidents-page-wrapper">
+    <!-- Header with Stats & Filters -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Incidents & Diagnostics</h1>
+            <p class="page-subtitle">Confirmed service outages, failure classifications, downtime duration, and recovery tracking.</p>
+        </div>
+
+        <div class="filter-tabs">
+            <a href="{{ url_for('incidents', status='ALL') }}" class="btn-tab {% if status_filter == 'ALL' %}active{% endif %}">
+                All ({{ open_count + resolved_count }})
+            </a>
+            <a href="{{ url_for('incidents', status='OPEN') }}" class="btn-tab {% if status_filter == 'OPEN' %}active{% endif %}">
+                <span class="dot-open"></span> Active ({{ open_count }})
+            </a>
+            <a href="{{ url_for('incidents', status='RESOLVED') }}" class="btn-tab {% if status_filter == 'RESOLVED' %}active{% endif %}">
+                Resolved ({{ resolved_count }})
+            </a>
+        </div>
+    </div>
+
+    <!-- Overview Metrics Grid -->
+    <section class="metrics-grid">
+        <div class="metric-card card-down">
+            <div class="metric-icon-wrap icon-down">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <div class="metric-data">
+                <span class="metric-label">Active Outages</span>
+                <span class="metric-value color-down">{{ open_count }}</span>
+                <span class="metric-note">Services currently experiencing downtime</span>
+            </div>
+        </div>
+
+        <div class="metric-card card-up">
+            <div class="metric-icon-wrap icon-up">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <div class="metric-data">
+                <span class="metric-label">Resolved Incidents</span>
+                <span class="metric-value color-up">{{ resolved_count }}</span>
+                <span class="metric-note">Confirmed recovered and operational</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Incidents Table Panel -->
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Incident Outage Records ({{ incidents|length }})</h2>
+                <span class="text-xs text-muted">Filtered by: <strong>{{ status_filter }}</strong></span>
+            </div>
+        </div>
+        <div class="panel-body">
+            {% if incidents %}
+                <div class="table-responsive">
+                    <table class="data-table" id="incidentsTable">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Service / Endpoint</th>
+                                <th>Failure Category</th>
+                                <th>Probable Root Cause</th>
+                                <th>Confidence</th>
+                                <th>Start Time / Duration</th>
+                                <th class="text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inc in incidents %}
+                                <tr>
+                                    <td>
+                                        {% if inc.status == 'OPEN' %}
+                                            <span class="badge-status badge-down">
+                                                <span class="pulse-dot"></span> OPEN
+                                            </span>
+                                        {% else %}
+                                            <span class="badge-status badge-up">RESOLVED</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="site-cell-meta">
+                                            <a href="{{ url_for('incident_detail', incident_id=inc.id) }}" class="table-link">
+                                                <strong>{{ inc.service_name }}</strong>
+                                            </a>
+                                            <span class="site-url-sub" title="{{ inc.service_url }}">{{ inc.service_url }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge-category">{{ inc.incident_type }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-sm" title="{{ inc.possible_cause or inc.description }}">
+                                            {{ (inc.possible_cause or inc.description)|truncate(65) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if inc.confidence %}
+                                            <span class="badge-confidence badge-confidence-{{ inc.confidence.lower() }}">
+                                                {{ inc.confidence }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted text-xs">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="site-cell-meta text-sm">
+                                            <span>{{ inc.started_at }}</span>
+                                            <span class="text-muted text-xs">
+                                                {% if inc.status == 'RESOLVED' and inc.duration_seconds is not none %}
+                                                    Downtime: <strong>{{ inc.duration_seconds }}s</strong>
+                                                {% elif inc.status == 'OPEN' %}
+                                                    <span class="text-danger font-medium">Ongoing outage</span>
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="text-right">
+                                        <a href="{{ url_for('incident_detail', incident_id=inc.id) }}" class="btn-action">
+                                            View Diagnostics &rarr;
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state-box">
+                    <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🛡️</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">
+                        {% if status_filter == 'OPEN' %}
+                            No Active Outages
+                        {% else %}
+                            No Incident Records Found
+                        {% endif %}
+                    </h3>
+                    <p class="panel-description" style="max-width: 480px; margin: 0 auto 1.5rem auto;">
+                        {% if status_filter == 'OPEN' %}
+                            All monitored endpoints are currently online and responding within operational limits.
+                        {% else %}
+                            There are no recorded incident events for your monitored services.
+                        {% endif %}
+                    </p>
+                    <a href="{{ url_for('websites') }}" class="btn-outline">View Monitored Websites</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

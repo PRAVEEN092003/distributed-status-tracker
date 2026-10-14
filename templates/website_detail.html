@@ -1,0 +1,422 @@
+{% extends "base.html" %}
+
+{% block title %}{{ service.service_name }} - Details - Distributed Status Tracker{% endblock %}
+
+{% block content %}
+<div class="detail-page-wrapper">
+    <!-- Breadcrumb & Top Bar -->
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb mb-1">
+                <a href="{{ url_for('websites') }}" class="link-subtle">&larr; Back to Websites</a>
+            </div>
+            <div class="flex-align-center gap-2">
+                <h1 class="page-title mb-0">{{ service.service_name }}</h1>
+                <span class="badge-status badge-{{ service.current_status.lower() }}">
+                    {{ service.current_status }}
+                </span>
+            </div>
+            <a href="{{ service.service_url }}" target="_blank" rel="noopener noreferrer" class="external-url-link mt-1 display-inline-block">
+                {{ service.service_url }} ↗
+            </a>
+        </div>
+        
+        <div class="header-actions">
+            <!-- Manual Check Now -->
+            <form method="POST" action="{{ url_for('check_website_now', service_id=service.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn-primary" title="Trigger immediate check">⚡ Check Now</button>
+            </form>
+
+            <!-- Toggle Active / Pause -->
+            <form method="POST" action="{{ url_for('toggle_website', service_id=service.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn-outline">
+                    {% if service.is_active == 1 %}⏸ Pause{% else %}▶ Resume{% endif %}
+                </button>
+            </form>
+
+            <a href="{{ url_for('edit_website', service_id=service.id) }}" class="btn-outline">✎ Edit</a>
+
+            <form method="POST" action="{{ url_for('delete_website', service_id=service.id) }}" onsubmit="return confirm('Delete this website and all monitoring history?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn-outline text-danger">✕ Delete</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Active Outage Alert Banner -->
+    {% if active_incident %}
+        <div class="alert-incident-banner">
+            <div class="alert-incident-icon">🚨</div>
+            <div class="alert-incident-content">
+                <strong>Active Outage: {{ active_incident.failure_category or active_incident.incident_type }}</strong>
+                <p>{{ active_incident.possible_cause or active_incident.description }}</p>
+                <div class="text-xs text-muted mt-1">
+                    Started: {{ active_incident.started_at }} &bull; Confidence: {{ active_incident.confidence or 'High' }}
+                </div>
+            </div>
+            <a href="{{ url_for('incident_detail', incident_id=active_incident.id) }}" class="btn-primary btn-sm">
+                View Diagnostics &rarr;
+            </a>
+        </div>
+    {% endif %}
+
+    <!-- 1. Service Overview & Health Metrics -->
+    <section class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-data">
+                <span class="metric-label">Operational Status</span>
+                <div class="mt-2">
+                    <span class="badge-status badge-{{ service.current_status.lower() }} text-base">
+                        {{ service.current_status }}
+                    </span>
+                </div>
+                <span class="metric-note">
+                    {% if service.is_active == 1 %}Continuous monitoring active{% else %}Monitoring currently paused{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-data">
+                <span class="metric-label">Latest Response Time</span>
+                <span class="metric-value">
+                    {% if service.last_response_time is not none %}
+                        {{ service.last_response_time }}<span class="text-sm font-normal">ms</span>
+                    {% else %}
+                        -
+                    {% endif %}
+                </span>
+                <span class="metric-note">Degraded threshold: 2000ms</span>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-data">
+                <span class="metric-label">Latest HTTP Status</span>
+                <span class="metric-value">
+                    {% if service.last_status_code %}
+                        <code>{{ service.last_status_code }}</code>
+                    {% else %}
+                        -
+                    {% endif %}
+                </span>
+                <span class="metric-note">HTTP response code</span>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-data">
+                <span class="metric-label">Schedule & Timeout</span>
+                <div class="metric-value text-xl">
+                    Every {{ service.check_interval }}s
+                </div>
+                <span class="metric-note">Request timeout: {{ service.timeout }}s</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. Downtime Risk Assessment & Contributing Factors -->
+    {% if risk_assessment %}
+        <div class="dashboard-panel mb-4 risk-panel">
+            <div class="panel-header">
+                <div class="risk-title-wrap">
+                    <h2>Downtime Risk & Stability Assessment</h2>
+                    <span class="badge-risk badge-risk-{{ risk_assessment.risk_level.lower() }}">
+                        {{ risk_assessment.risk_level }} RISK ({{ risk_assessment.risk_score }}/100)
+                    </span>
+                </div>
+                <div class="risk-trend-tag">
+                    <span class="text-xs text-muted uppercase">Latency Trend:</span>
+                    <span class="badge-trend trend-{{ risk_assessment.latency_trend.lower() }}">{{ risk_assessment.latency_trend }}</span>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="risk-detail-grid">
+                    <div class="risk-overview-col">
+                        <span class="rca-label">Analysis Summary:</span>
+                        <p class="risk-explanation-lead">{{ risk_assessment.explanation }}</p>
+                        
+                        <div class="risk-submetrics-row">
+                            <div class="submetric-item">
+                                <span class="submetric-label">Analyzed Checks</span>
+                                <span class="submetric-val">{{ risk_assessment.metrics.total_checks_analyzed }}</span>
+                            </div>
+                            <div class="submetric-item">
+                                <span class="submetric-label">Recent Failure Rate</span>
+                                <span class="submetric-val">{{ risk_assessment.metrics.failure_rate_percent }}%</span>
+                            </div>
+                            <div class="submetric-item">
+                                <span class="submetric-label">Recent Avg Latency</span>
+                                <span class="submetric-val">{% if risk_assessment.metrics.recent_latency_ms %}{{ risk_assessment.metrics.recent_latency_ms }}ms{% else %}-{% endif %}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="risk-factors-col">
+                        <span class="rca-label">Contributing Factors:</span>
+                        <ul class="factors-bullet-list">
+                            {% for factor in risk_assessment.contributing_factors %}
+                                <li>{{ factor }}</li>
+                            {% endfor %}
+                        </ul>
+
+                        <span class="rca-label mt-2">Recommended Preventive Actions:</span>
+                        <ul class="recommendations-bullet-list">
+                            {% for rec in risk_assessment.recommendations %}
+                                <li>{{ rec }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- 3. Response-Time Latency Trend Chart -->
+    <section class="chart-panel">
+        <div class="chart-header">
+            <div>
+                <h2 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">Response-Time Trend</h2>
+                <p class="text-xs text-muted">Latency recordings across recent check executions</p>
+            </div>
+            <span class="badge-trend trend-{{ (risk_assessment.latency_trend if risk_assessment else 'STABLE')|lower }}">
+                {{ risk_assessment.latency_trend if risk_assessment else 'STABLE' }}
+            </span>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="serviceDetailChart"></canvas>
+        </div>
+    </section>
+
+    <!-- 4. Related Incidents on this Website -->
+    {% if past_incidents %}
+        <div class="dashboard-panel mb-4">
+            <div class="panel-header">
+                <h2>Related Outage Incidents ({{ past_incidents|length }})</h2>
+                <a href="{{ url_for('incidents') }}" class="link-subtle">All System Incidents &rarr;</a>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Failure Category</th>
+                                <th>Probable Cause</th>
+                                <th>Started</th>
+                                <th>Duration</th>
+                                <th class="text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inc in past_incidents %}
+                                <tr>
+                                    <td>
+                                        {% if inc.status == 'OPEN' %}
+                                             <span class="badge-status badge-down"><span class="pulse-dot"></span> OPEN</span>
+                                        {% else %}
+                                            <span class="badge-status badge-up">RESOLVED</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge-category">{{ inc.incident_type }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-sm">{{ (inc.possible_cause or inc.description)|truncate(60) }}</span>
+                                    </td>
+                                    <td class="text-sm text-muted">{{ inc.started_at }}</td>
+                                    <td class="text-sm text-muted">
+                                        {% if inc.duration_seconds is not none %}
+                                             {{ inc.duration_seconds }}s
+                                        {% elif inc.status == 'OPEN' %}
+                                            <span class="text-danger font-medium">Ongoing</span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-right">
+                                        <a href="{{ url_for('incident_detail', incident_id=inc.id) }}" class="btn-action">
+                                            Diagnostics &rarr;
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- 5. Recent Monitoring History & Failure Classification -->
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Recent Monitoring History (Last {{ recent_results|length }})</h2>
+                <span class="text-xs text-muted">Recent check results and diagnostic classifications</span>
+            </div>
+            <a href="{{ url_for('history', service_id=service.id) }}" class="link-subtle">Full Service History &rarr;</a>
+        </div>
+        <div class="panel-body">
+            {% if recent_results %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Status</th>
+                                <th>Latency</th>
+                                <th>HTTP Code</th>
+                                <th>Failure Classification</th>
+                                <th>Diagnostic / Cause</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for res in recent_results %}
+                                <tr>
+                                    <td class="text-sm text-muted">{{ res.checked_at }}</td>
+                                    <td>
+                                        <span class="badge-status badge-{{ res.status.lower() }}">
+                                            {{ res.status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if res.response_time is not none %}
+                                            <strong>{{ res.response_time }}ms</strong>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if res.http_status_code %}
+                                            <code>{{ res.http_status_code }}</code>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if res.failure_category %}
+                                            <span class="badge-category">{{ res.failure_category }}</span>
+                                            {% if res.confidence %}
+                                                <span class="badge-confidence badge-confidence-{{ res.confidence.lower() }} ml-1">
+                                                    {{ res.confidence }}
+                                                </span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-success text-xs font-medium">Normal / Healthy</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if res.possible_cause %}
+                                            <span class="text-sm font-medium">{{ res.possible_cause }}</span>
+                                        {% elif res.error_message %}
+                                            <span class="text-danger text-sm">{{ res.error_message }}</span>
+                                        {% else %}
+                                            <span class="text-success text-sm">Response received normally</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="table-empty">
+                    No check results recorded yet for this service.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize Response-Time Trend Chart
+    (function initDetailChart() {
+        const canvas = document.getElementById('serviceDetailChart');
+        if (!canvas || typeof Chart === 'undefined') return;
+
+        const results = [
+            {% if recent_results %}
+                {% for r in recent_results|reverse %}
+                    {
+                        time: "{{ r.checked_at }}",
+                        latency: {{ r.response_time if r.response_time is not none else 'null' }},
+                        status: "{{ r.status }}"
+                    },
+                {% endfor %}
+            {% endif %}
+        ];
+
+        const labels = results.length > 0
+            ? results.map(r => r.time ? r.time.split(' ')[1] || r.time : '')
+            : ['No data'];
+        const data = results.length > 0
+            ? results.map(r => r.latency !== null ? r.latency : 0)
+            : [0];
+
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+        gradient.addColorStop(0, 'rgba(139, 92, 246, 0.4)');
+        gradient.addColorStop(1, 'rgba(139, 92, 246, 0.02)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Response Time (ms)',
+                    data: data,
+                    borderColor: '#8b5cf6',
+                    backgroundColor: gradient,
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#c4b5fd',
+                    pointBorderColor: '#7c3aed',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.35,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleColor: '#f8fafc',
+                        bodyColor: '#cbd5e1',
+                        borderColor: '#334155',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                return `Latency: ${context.parsed.y} ms`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(51, 65, 85, 0.35)' },
+                        ticks: { color: '#94a3b8', font: { family: "'Inter', sans-serif", size: 11 } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(51, 65, 85, 0.35)' },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { family: "'Inter', sans-serif", size: 11 },
+                            callback: function(v) { return v + ' ms'; }
+                        }
+                    }
+                }
+            }
+        });
+    })();
+</script>
+{% endblock %}
