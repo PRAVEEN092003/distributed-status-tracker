@@ -1,46 +1,34 @@
 # Distributed Status Tracker
-### Website Monitoring, Root Cause Analysis & Downtime Risk Prediction
 
-## 📌 Project Overview
+A web-based monitoring application for tracking website availability, identifying service failures, analyzing root causes, and assessing downtime risks.
 
-Distributed Status Tracker is a web-based website and API monitoring application developed to monitor endpoint availability, track response times, detect service failures, identify probable root causes, and assess downtime risks.
+## Overview
 
-The application continuously monitors registered endpoints using an automated background monitoring engine. It records monitoring results, classifies failures, maintains incident records, and provides a centralized dashboard for service health visibility.
+Distributed Status Tracker provides a centralized dashboard for monitoring multiple websites and HTTP endpoints. It automatically checks endpoint availability, records response times, identifies failures, and maintains historical monitoring records.
 
-The system also includes a rule-based downtime risk assessment engine that evaluates historical monitoring data to calculate risk scores and identify services that may require attention.
+The application includes a Root Cause Analysis (RCA) engine to classify monitoring failures and a rule-based risk assessment engine to evaluate potential downtime risks using historical monitoring data.
 
-## 🎯 Objectives
+It also provides incident tracking, recovery monitoring, and visual representations of service health and performance.
 
+## Features
+
+### Website & API Monitoring
 - Monitor multiple websites and HTTP endpoints.
-- Detect service availability issues and performance degradation.
-- Record response times and HTTP status codes.
-- Identify probable causes of monitoring failures.
-- Calculate downtime risk scores using historical monitoring data.
-- Maintain incident records and track service recovery.
-- Provide a centralized dashboard for monitoring and diagnostics.
-- Implement secure user authentication and user-specific data isolation.
-
-## ✨ Key Features
-
-### 1. Website & API Monitoring
-- Register and manage website endpoints.
 - Perform manual health checks.
 - Automatically monitor active endpoints using a background worker.
 - Configure monitoring intervals and request timeouts.
-- Pause, resume, edit, and delete monitored endpoints.
-- Track service availability and response times.
+- Track response times and HTTP status codes.
+- Manage monitored websites through the dashboard.
 
-### 2. Service Health Classification
+### Service Health Detection
+Endpoints are classified into three health states:
 
-The monitoring engine classifies endpoint health into three categories:
+- **UP** — The endpoint is responding within the configured acceptable conditions.
+- **DEGRADED** — The endpoint exhibits performance issues or configured warning conditions.
+- **DOWN** — The endpoint is unreachable or experiences a qualifying failure.
 
-- **UP:** The endpoint responds within the configured acceptable conditions.
-- **DEGRADED:** The endpoint exhibits high latency or other configured warning conditions.
-- **DOWN:** The endpoint is unreachable or experiences a qualifying failure.
-
-### 3. Smart Failure Detection & Root Cause Analysis
-
-The Root Cause Analysis (RCA) engine identifies and classifies common monitoring failures, including:
+### Root Cause Analysis
+The diagnostic engine identifies and classifies common monitoring failures, including:
 
 - DNS resolution failures
 - Connection timeouts
@@ -53,181 +41,145 @@ The Root Cause Analysis (RCA) engine identifies and classifies common monitoring
 - Redirect or configuration issues
 - Unknown failures
 
-For detected failures, the system provides diagnostic information, probable causes, confidence levels, and recommended troubleshooting steps.
+For detected failures, the application provides probable causes, diagnostic confidence, and troubleshooting recommendations.
 
-### 4. Downtime Risk Prediction
+### Downtime Risk Assessment
+The rule-based risk engine calculates a score from 0 to 100 using historical monitoring information.
 
-The rule-based risk assessment engine calculates a risk score between 0 and 100 using historical monitoring information.
+| Risk Level | Score |
+|---|---:|
+| LOW | 0–29 |
+| MEDIUM | 30–59 |
+| HIGH | 60–100 |
 
-Risk classifications:
+Risk assessment considers consecutive failures, failure frequency, latency trends, active incidents, and historical stability.
 
-- **LOW:** 0–29
-- **MEDIUM:** 30–59
-- **HIGH:** 60–100
+Risk scores are estimates based on configured rules and historical observations. They do not guarantee that a future outage will occur.
 
-Risk assessment considers factors such as consecutive failures, historical failure frequency, latency changes, incident activity, and service stability.
+### Incident Management
+- Create incidents when configured failure thresholds are reached.
+- Record incident start times and failure diagnostics.
+- Track ongoing outages and downtime duration.
+- Prevent duplicate active incidents according to the incident policy.
+- Track service recovery and resolve incidents after successful recovery detection.
 
-The dashboard displays risk scores, contributing factors, latency trends, and recommended preventive actions.
+### Monitoring History
+- Store historical monitoring results.
+- Review service status and response times.
+- Inspect HTTP status codes and failure classifications.
+- Review diagnostic information associated with monitoring checks.
 
-*Note: Risk scores are rule-based estimates derived from monitoring data. They are not guaranteed predictions of future outages.*
-
-### 5. Incident Management & Recovery Tracking
-
-- Create incidents when qualifying consecutive failures meet the configured threshold.
-- Associate incidents with affected endpoints.
-- Record failure categories and probable root causes.
-- Track incident start times and ongoing downtime.
-- Prevent duplicate active incidents for the same service according to the incident policy.
-- Track recovery and resolve incidents after successful recovery detection.
-
-### 6. Monitoring History & Telemetry
-
-The application maintains historical monitoring records containing relevant information such as:
-
-- Timestamp
-- Endpoint
-- Service status
-- Response time
-- HTTP status code
-- Failure classification
-- Diagnostic information
-
-Users can review previous monitoring results and investigate service availability issues.
-
-### 7. Dashboard & Visualization
-
-The dashboard provides a centralized view of:
+### Dashboard & Visualization
+The dashboard provides an overview of:
 
 - Total monitored websites
 - UP, DEGRADED, and DOWN service counts
 - Response-time trends
-- Active outage alerts
-- Recent monitoring results
-- Downtime risk assessments
-- Links to incident diagnostics and monitoring history
+- Active incidents and outage alerts
+- Recent monitoring activity
+- Downtime risk scores
+- Service diagnostics
 
-### 8. Authentication & Security
-
-- User registration and login.
-- Secure password hashing.
-- Session-based authentication.
-- CSRF protection.
-- User-specific data isolation.
-- URL validation and SSRF protections for monitored endpoints.
-- Environment-based configuration for sensitive settings.
-
-## 🛠️ Technology Stack
-
-### Frontend
-- HTML5
-- CSS3
-- Vanilla JavaScript
-- Chart.js
-
-### Backend
-- Python
-- Flask
-- Python Requests
-
-### Database
-- SQLite
-
-### Security
-- Werkzeug password hashing
+### Authentication & Security
+- User registration and login
+- Secure password hashing
 - Session-based authentication
 - CSRF protection
+- User-specific data isolation
+- URL validation
 - Server-Side Request Forgery (SSRF) protections
 
-### Development Tools
-- Visual Studio Code / Antigravity IDE
-- Python Virtual Environment
-- Git
+## Technology Stack
 
-## 🏗️ System Architecture
+| Component | Technology |
+|---|---|
+| Frontend | HTML5, CSS3, Vanilla JavaScript |
+| Backend | Python, Flask |
+| Database | SQLite |
+| HTTP Monitoring | Python Requests |
+| Charts | Chart.js |
+| Authentication | Flask sessions, Werkzeug password hashing |
 
-The application follows a modular web architecture.
+## Project Structure
 
 ```text
-                 User / Browser
-                       |
-                       v
-              HTML, CSS, JavaScript
-                       |
-                       v
-                 Flask Application
-                       |
-          +------------+------------+
-          |            |            |
-          v            v            v
-    Authentication   Monitoring   Risk Assessment
-          |          & RCA Engine       |
-          |            |                |
-          +------------+----------------+
-                       |
-                       v
-                  SQLite Database
-                       ^
-                       |
-              Background Monitoring
-                     Worker
-                       |
-                       v
-                Website / API
-                  Endpoints
+Distributed Status Tracker/
+│
+├── app.py
+├── database.py
+├── monitor.py
+├── monitor_daemon.py
+├── validator.py
+├── rca_engine.py
+├── risk_engine.py
+│
+├── templates/
+│   ├── base.html
+│   ├── dashboard.html
+│   ├── websites.html
+│   ├── website_detail.html
+│   ├── history.html
+│   ├── incidents.html
+│   └── incident_detail.html
+│
+├── static/
+│   ├── css/
+│   └── js/
+│
+├── tests/
+├── instance/
+├── .env.example
+├── .gitignore
+├── requirements.txt
+└── README.md
 ```
 
-The Flask application handles user interactions and dashboard requests. The monitoring worker performs scheduled endpoint checks and records the results in SQLite. The RCA and risk assessment components use monitoring information to generate diagnostics and risk indicators.
+*The exact template and static file contents may vary with the current implementation.*
 
-## ⚙️ Installation & Setup
+## Installation
 
 ### Prerequisites
-
-Ensure the following are installed:
 
 - Python 3.10 or later
 - pip
 - Windows PowerShell or a compatible terminal
 
-### Step 1: Open the Project Directory
+### 1. Clone the Repository
 
-Open a terminal and navigate to the project folder.
-
-```powershell
-cd "C:\Users\Sys\Desktop\Distributed Status Tracker"
+```bash
+git clone https://github.com/YOUR_USERNAME/distributed-status-tracker.git
+cd distributed-status-tracker
 ```
 
-### Step 2: Activate the Virtual Environment
+Replace `YOUR_USERNAME` with your GitHub username.
 
-If the project already contains a virtual environment:
-
-```powershell
-.\venv\Scripts\Activate.ps1
-```
-
-If a virtual environment has not been created, create one first:
+### 2. Create a Virtual Environment
 
 ```powershell
 python -m venv venv
+```
+
+Activate it:
+
+```powershell
 .\venv\Scripts\Activate.ps1
 ```
 
-### Step 3: Install Dependencies
+### 3. Install Dependencies
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-### Step 4: Configure Environment Variables
+### 4. Configure Environment Variables
 
-Create a `.env` file using the project's `.env.example` as a reference.
+Create a `.env` file using `.env.example` as a reference.
 
-Configure the required application settings according to the existing project configuration.
+Configure the required environment variables according to the application settings.
 
-Do not expose secret keys or other sensitive configuration values.
+Do not commit `.env` files, passwords, or secret keys to the repository.
 
-### Step 5: Start the Flask Application
-
-Open the first terminal:
+### 5. Start the Application
 
 ```powershell
 python app.py
@@ -235,41 +187,34 @@ python app.py
 
 Open the application in your browser:
 
-http://127.0.0.1:5000
+**http://127.0.0.1:5000**
 
-### Step 6: Start the Monitoring Worker
+### 6. Background Monitoring
 
-Open a second terminal:
+The application includes a background monitoring worker.
 
-```powershell
-cd "C:\Users\Sys\Desktop\Distributed Status Tracker"
-.\venv\Scripts\Activate.ps1
-python monitor_daemon.py
-```
+When using the integrated worker started by `app.py`, keep the application running to maintain monitoring.
 
-Keep the Flask application and monitoring worker running in their respective terminals for continuous monitoring.
+If running the standalone worker separately, follow the project's configured daemon startup procedure to avoid starting duplicate monitoring workers.
 
-The database is initialized automatically during application startup if supported by the current application configuration.
+## Usage
 
-## 🚀 Usage
+1. Register an account and log in.
+2. Open the Websites page.
+3. Add a website or API endpoint.
+4. Configure its monitoring settings.
+5. Perform a manual health check or allow scheduled monitoring to run.
+6. Review service status and response times.
+7. Inspect monitoring history for previous results.
+8. Review diagnostic information when a failure occurs.
+9. Open the Incidents page to inspect outages and recovery information.
+10. Review risk scores and contributing factors to assess service stability.
 
-1. Start the Flask application and monitoring worker.
-2. Register an account and log in.
-3. Open the Websites page.
-4. Add a website or API endpoint.
-5. Configure the monitoring interval and timeout.
-6. Use the manual Check action to initiate a health check.
-7. Review the endpoint's status and response time.
-8. Open Monitoring History to inspect historical results.
-9. Review failure diagnostics and probable causes when an endpoint becomes unavailable.
-10. Open Incidents to inspect recorded outages and recovery information.
-11. Review downtime risk scores and contributing factors on the dashboard or website details page.
+## Testing
 
-## 🧪 Testing
+The project contains automated tests covering authentication, monitoring, URL security validation, failure classification, incident handling, and risk assessment.
 
-The project includes automated unit and integration tests covering its principal components.
-
-The final project verification report records the following test results:
+The final verification report recorded the following result:
 
 ```text
 Ran 31 tests in 12.208s
@@ -277,64 +222,44 @@ Ran 31 tests in 12.208s
 OK
 ```
 
-The reported test coverage includes:
-
-- Authentication and data isolation
-- Endpoint registration and validation
-- SSRF protection
-- Monitoring status classification
-- Background worker locking
-- Root Cause Analysis
-- Incident creation and recovery tracking
-- Downtime risk scoring
-- Latency trend detection
-- Risk API endpoints
-
-To execute the test suite:
+To run the test suite:
 
 ```powershell
 python -m unittest discover tests/
 ```
 
-*The test results above are from the project's final verification report.*
+## Security Considerations
 
-## 🔒 Security Considerations
+The application incorporates URL validation and SSRF protections for monitored endpoints.
 
-The application incorporates security measures intended to protect user accounts, stored data, and monitored infrastructure.
+It is designed to prevent requests to prohibited internal destinations, including restricted private and loopback addresses, according to the configured security policy.
 
-These include password hashing, CSRF protection, user-specific data isolation, URL validation, and SSRF protections.
+Keep environment variables and sensitive configuration outside the public repository.
 
-The monitoring system must reject prohibited internal destinations and unsafe endpoint configurations according to its security policy.
+## Future Improvements
 
-Environment variables should be used for sensitive configuration, and `.env` files should not be included in project submissions.
+Potential future enhancements include:
 
-## 📈 Future Enhancements
+- Email notifications for critical outages
+- Exportable monitoring reports
+- Additional performance analytics
+- Configurable alert thresholds
+- Extended monitoring integrations
 
-Potential future improvements include:
+These are potential enhancements and are not represented as existing features.
 
-- Email notifications for critical outages.
-- Exportable monitoring and incident reports.
-- Additional monitoring visualizations.
-- Configurable alert thresholds.
-- Extended performance analytics.
-- Additional monitoring integrations.
+## Project Information
 
-These are possible future enhancements and are not claimed as implemented features.
+**Project Name:** Distributed Status Tracker
 
-## 🎓 Project Information
+**Category:** Web Application / Website Monitoring
 
-**Project Title:** Distributed Status Tracker
-
-**Project Category:** Web Application / Website Monitoring System
-
-**Primary Domain:** Web Monitoring, Network Diagnostics, and Reliability Engineering
+**Primary Focus:** Website Availability, Root Cause Analysis, Downtime Risk Assessment, and Incident Management
 
 **Development Type:** Academic / Internship Project
 
-**Purpose:** To monitor website availability, diagnose service failures, assess downtime risks, and maintain incident and recovery records through a centralized web application.
+## Conclusion
 
-## 👨‍💻 Conclusion
+Distributed Status Tracker combines automated website monitoring, historical telemetry, failure diagnosis, rule-based downtime risk assessment, and incident management in a centralized web application.
 
-Distributed Status Tracker provides a centralized solution for website and API availability monitoring, historical telemetry collection, failure diagnosis, downtime risk assessment, and incident management.
-
-By combining Flask-based web development, automated HTTP monitoring, SQLite persistence, rule-based risk analysis, and Root Cause Analysis, the project demonstrates practical application development and service reliability monitoring concepts.
+The project demonstrates practical implementation of Python web development, HTTP monitoring, database management, application security, and service reliability concepts.
